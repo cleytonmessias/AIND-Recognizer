@@ -20,6 +20,27 @@ def recognize(models: dict, test_set: SinglesData):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     probabilities = []
     guesses = []
-    # TODO implement the recognizer
-    # return probabilities, guesses
-    raise NotImplementedError
+
+    for word_id in range(0, len(test_set.get_all_Xlengths())):
+
+        X, lengths = test_set.get_item_Xlengths(word_id)
+
+        probs = {}
+        # best_score = float('-Inf')
+        inf_score = float('-Inf')
+        guessed_word = None
+
+        for word, model in models.items():
+          try:
+            score = model.score(X, lengths)
+            probs[word] = score
+          except:
+            probs[word] = inf_score
+            pass
+
+        sort = sorted(probs, key=probs.get, reverse=True)
+
+        guesses.append(sort[0])
+        probabilities.append(probs)
+
+    return probabilities, guesses
