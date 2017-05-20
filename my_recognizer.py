@@ -26,8 +26,7 @@ def recognize(models: dict, test_set: SinglesData):
         X, lengths = test_set.get_item_Xlengths(word_id)
 
         probs = {}
-        # best_score = float('-Inf')
-        inf_score = float('-Inf')
+        
         guessed_word = None
 
         for word, model in models.items():
@@ -35,7 +34,7 @@ def recognize(models: dict, test_set: SinglesData):
             score = model.score(X, lengths)
             probs[word] = score
           except:
-            probs[word] = inf_score
+            probs[word] = float('-Inf')
             pass
 
         sort = sorted(probs, key=probs.get, reverse=True)

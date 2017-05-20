@@ -76,27 +76,29 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         best_score = float("-inf")
-        best_model = None
+        best_model = self.base_model(self.min_n_components)
         num_features = self.X.shape[1]
 
-        for i_components in range(self.min_n_components, self.max_n_components+1):
+        for index_components in range(self.min_n_components, self.max_n_components+1):
             try:
-                new_model = self.base_model(i_components)
+                new_model = self.base_model(index_components)
 
                 logL = new_model.score(self.X, self.lengths)
                 logN = np.log(len(self.X))
 
-                initial_state = i_components
+                i_state = index_components
 
-                transition_probs = i_components * (i_components-1)
-                emission_probs = i_components * num_features * 2
+                tran_probs = index_components * (index_components-1)
+                emmi_probs = index_components * num_features * 2
 
-                p = initial_state + transition_probs + emission_probs
+                p = i_state + tran_probs + emmi_probs
 
                 new_score = -2 * logL + p * logN
 
-                best_score, best_model = max((best_score, best_model), (new_score, new_model))
+                best_score, best_model = min((best_score, best_model), (new_score, new_model))
 
+            except ValueError:
+                pass
             except:
                 pass
 
@@ -120,13 +122,13 @@ class SelectorDIC(ModelSelector):
 
         num_features = self.X.shape[1]
 
-        for i_components in range(self.min_n_components, self.max_n_components +1):
+        for index_components in range(self.min_n_components, self.max_n_components +1):
             try:
-                new_model = self.base_model(i_components)
+                new_model = self.base_model(index_components)
 
                 logL = new_model.score(self.X, self.lengths)
 
-                partial_score = 0
+                summing_score = 0
                 count = 0
 
                 for word in self.words:
@@ -134,12 +136,12 @@ class SelectorDIC(ModelSelector):
                         new_X, new_leghts = self.hwords[word]
 
                         try:
-                            partial_score += hmm_model.score(new_X, new_leghts)
+                            summing_score += hmm_model.score(new_X, new_leghts)
                             count += 1
                         except:
                             pass
                 if count > 0:
-                    logAll = partial_score/count
+                    logAll = summing_score/count
                 else:
                     logAll = 0
 
@@ -170,26 +172,26 @@ class SelectorCV(ModelSelector):
 
         kf = KFold(n_splits=self.splits())
 
-        for i_components in range(self.min_n_components, self.max_n_components +1 ):
-            partial_score = 0
+        for index_components in range(self.min_n_components, self.max_n_components +1 ):
+            summing_score = 0
             count = 0
 
-            for cv_train_idx, cv_test_idx in kf.split(self.sequences):
+            for cv_train, cv_test in kf.split(self.sequences):
                 new_model = None
                 try:
-                    train_X, train_lengths = combine_sequences(cv_train_idx, self.sequences)
-                    test_X, test_lenghts = combine_sequences(cv_test_idx, self.sequences)
+                    train_X, train_lengths = combine_sequences(cv_train, self.sequences)
+                    test_X, test_lenghts = combine_sequences(cv_test, self.sequences)
 
-                    new_model = GaussianHMM(n_components = i_components, covariance_type="diag", n_iter=1000,
+                    new_model = GaussianHMM(n_components = index_components, covariance_type="diag", n_iter=1000,
                                             random_state=self.random_state, verbose=False).fit(train_X, train_lengths)
 
-                    partial_score += hmm_model.score(test_X, test_lenghts)
+                    summing_score += hmm_model.score(test_X, test_lenghts)
                     count += 1
                 except:
                     pass
 
             if count > 0:
-                new_score = partial_score / count
+                new_score = summing_score / count
             else:
                 new_score = 0
 
